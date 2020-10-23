@@ -42,13 +42,23 @@ RSpec.describe Deps do
         'Hello'
       end
     end
-
-    it do
-      deps = Deps.test_run do
+    let(:deps) do
+      Deps.test_run do
         person = Person.new
         person.first_name
       end
-      expect(deps.dependency_graph).to eq []
+    end
+
+    describe 'method graph' do
+      it do
+        expect(deps.dependency_graph).to eq []
+      end
+    end
+
+    describe 'class graph' do
+      it do
+        expect(deps.class_graph).to eq []
+      end
     end
   end
 
@@ -67,14 +77,24 @@ RSpec.describe Deps do
         '+3809876543210'
       end
     end
-
-    it do
-      deps = Deps.test_run do
+    let(:deps) do
+      Deps.test_run do
         person = Person.new
         person.first_name
         person.phone_number
       end
-      expect(deps.dependency_graph).to eq [['Person#phone_number', 'PhoneNumber#phone']]
+    end
+
+    describe 'method graph' do
+      it do
+        expect(deps.dependency_graph).to eq [['Person#phone_number', 'PhoneNumber#phone']]
+      end
+    end
+
+    describe 'class graph' do
+      it do
+        expect(deps.class_graph).to eq [['Person', 'PhoneNumber']]
+      end
     end
   end
 
@@ -128,21 +148,39 @@ RSpec.describe Deps do
         print('Nothing')
       end
     end
-
-    it do
-      deps = Deps.test_run do
+    let(:deps) do
+      Deps.test_run do
         site = Site.new
         site.full_name
       end
-      expect(deps.dependency_graph).to eq [["Site#test", "Site#print"],
-                                           ["Site#full_name", "Site#test"],
-                                           ["Site#full_name", "Person#first_name"],
-                                           ["NumberUtils#validate", "StringUtils#validate_str"],
-                                           ["PhoneNumber#get", "NumberUtils#validate"],
-                                           ["PhoneNumber#get", "StringUtils#validate_str"],
-                                           ["Person#middle_name", "PhoneNumber#get"],
-                                           ["Site#full_name", "Person#middle_name"],
-                                           ["Site#full_name", "Person#last_name"]]
+    end
+
+    describe 'method graph' do
+      it do
+        expect(deps.dependency_graph).to eq [
+          ["Site#test", "Site#print"],
+          ["Site#full_name", "Site#test"],
+          ["Site#full_name", "Person#first_name"],
+          ["NumberUtils#validate", "StringUtils#validate_str"],
+          ["PhoneNumber#get", "NumberUtils#validate"],
+          ["PhoneNumber#get", "StringUtils#validate_str"],
+          ["Person#middle_name", "PhoneNumber#get"],
+          ["Site#full_name", "Person#middle_name"],
+          ["Site#full_name", "Person#last_name"]
+        ]
+      end
+    end
+
+    describe 'class graph' do
+      it do
+        expect(deps.class_graph).to eq [
+          ["Site", "Person"],
+          ["NumberUtils", "StringUtils"],
+          ["PhoneNumber", "NumberUtils"],
+          ["PhoneNumber", "StringUtils"],
+          ["Person", "PhoneNumber"]
+        ]
+      end
     end
   end
 end

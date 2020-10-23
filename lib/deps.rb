@@ -2,11 +2,36 @@ require 'ruby-graphviz'
 
 # TODO: Filter by path
 # TODO: Filter by class with stack size
-# TODO: :with_methods, :class_only
-# TODO: Do not self-referrance
 # TODO: meta programming
 class Deps
   attr_reader :stack_level
+
+  def self.run
+    self.test_run { yield }.tap { |deps| deps.create_graph_image }
+  end
+
+  def self.test_run
+    deps = Deps.new
+    @trace1 = TracePoint.new(:call) do |tp|
+      class_name = tp.defined_class.to_s
+      method = tp.method_id.to_s
+      deps.change_stack_level_by(1)
+      # deps.increase_stack_level
+      deps.add_callee(class_name, method)
+    end
+    @trace2 = TracePoint.new(:return) do |tp|
+      deps.match_dependency
+      # deps.descrease_stack_level
+      deps.change_stack_level_by(-1)
+    end
+    @trace1.enable
+    @trace2.enable
+    yield
+    @trace1.disable
+    @trace2.disable
+    deps
+  end
+
   def initialize
     @callees = []
     @deps = []
@@ -47,6 +72,10 @@ class Deps
     end.uniq
   end
 
+  def class_graph
+    @deps.map { |a, b| [a.first, b.first] }.uniq.reject { |klass1, klass2| klass1 == klass2 }
+  end
+
   def change_stack_level_by(number)
     @stack_level += number
   end
@@ -63,29 +92,5 @@ class Deps
     g.output(png: 'deps.png')
   end
 
-  def self.run
-    self.test_run { yield }.tap { |deps| deps.create_graph_image }
-  end
-
-  def self.test_run
-    deps = Deps.new
-    @trace1 = TracePoint.new(:call) do |tp|
-      class_name = tp.defined_class.to_s
-      method = tp.method_id.to_s
-      deps.change_stack_level_by(1)
-      # deps.increase_stack_level
-      deps.add_callee(class_name, method)
-    end
-    @trace2 = TracePoint.new(:return) do |tp|
-      deps.match_dependency
-      # deps.descrease_stack_level
-      deps.change_stack_level_by(-1)
-    end
-    @trace1.enable
-    @trace2.enable
-    yield
-    @trace1.disable
-    @trace2.disable
-    deps
-  end
+  private
 end
