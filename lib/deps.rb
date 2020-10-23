@@ -16,12 +16,12 @@ class Deps
       class_name = tp.defined_class.to_s
       method = tp.method_id.to_s
       deps.change_stack_level_by(1)
-      # deps.increase_stack_level
+      # deps.ascend_stack_level
       deps.add_callee(class_name, method)
     end
     @trace2 = TracePoint.new(:return) do |tp|
       deps.match_dependency
-      # deps.descrease_stack_level
+      # deps.descend_stack_level
       deps.change_stack_level_by(-1)
     end
     @trace1.enable
@@ -92,5 +92,11 @@ class Deps
     g.output(png: 'deps.png')
   end
 
-  private
+  class Visualizer
+    def self.draw(graph)
+      return if graph.empty?
+
+      GraphViz.new('G').output(png: 'deps.png')
+    end
+  end
 end
