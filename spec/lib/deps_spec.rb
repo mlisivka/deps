@@ -36,6 +36,7 @@ RSpec.describe Deps do
       end
     end
   end
+
   context 'when there is no dependency' do
     class Person
       def first_name
@@ -94,6 +95,45 @@ RSpec.describe Deps do
     describe 'class graph' do
       it do
         expect(deps.class_graph).to eq [['Person', 'PhoneNumber']]
+      end
+    end
+  end
+
+  context 'with 3rd party library' do
+    class Person2
+      def first_name
+        'Hello'
+      end
+
+      def phone_number
+        PhoneNumber2.new.phone
+      end
+    end
+    class PhoneNumber2
+      require 'base64'
+      def phone
+        Base64.encode64('+3809876543210')
+      end
+    end
+    subject(:deps) do
+      Deps.test_run(filter: 'spec/lib/*') do
+        person = Person2.new
+        person.first_name
+        person.phone_number
+      end
+    end
+
+    context 'with filter option' do
+      describe 'method graph' do
+        it do
+          expect(deps.dependency_graph).to eq [['Person2#phone_number', 'PhoneNumber2#phone']]
+        end
+      end
+
+      describe 'class graph' do
+        it do
+          expect(deps.class_graph).to eq [['Person2', 'PhoneNumber2']]
+        end
       end
     end
   end
