@@ -1,3 +1,5 @@
+require './lib/deps'
+
 RSpec.describe Deps::Visualizer do
   describe '.draw' do
     let(:graph_svg) do
@@ -31,11 +33,6 @@ RSpec.describe Deps::Visualizer do
         File.delete(file_path) if File.exist?(file_path)
       end
 
-      it 'call GraphViz#output' do
-        expect_any_instance_of(GraphViz).to receive(:output)
-        subject
-      end
-
       it 'creates graph image' do
         subject
         expect(File.read(file_path)).to include(graph_svg)
@@ -44,6 +41,18 @@ RSpec.describe Deps::Visualizer do
       it 'creates graph in the correct path' do
         subject
         expect(File.exist?(file_path)).to be_truthy
+      end
+
+      context 'when format option passed' do
+        let(:file_path) { File.expand_path('deps.png') }
+        let(:graph_png) { File.open('./spec/fixtures/simple_deps.png', 'rb').read }
+
+        subject { described_class.draw([['Site', 'Person']], format: :png) }
+
+        it 'creates graph image in a different format' do
+          subject
+          expect(File.open(file_path, 'rb').read).to include(graph_png)
+        end
       end
     end
 

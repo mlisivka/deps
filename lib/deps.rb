@@ -93,7 +93,7 @@ class Deps
   end
 
   class Visualizer
-    def self.draw(graph)
+    def self.draw(graph, format: :svg)
       return if graph.empty?
 
       g = GraphViz.new('Deps')
@@ -102,7 +102,7 @@ class Deps
         n2 = g.add_nodes(vs)
         g.add_edges(n1, n2)
       end
-      g.output(svg: 'deps.svg')
+      g.output(format => "deps.#{format}")
     end
   end
 end
