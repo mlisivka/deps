@@ -83,7 +83,7 @@ class Deps
   def create_graph_image
     return if dependency_graph.empty?
 
-    g = GraphViz.new('G', use: 'dot', mode: 'major', rankdir: 'LR', concentrate: 'true', fontname: 'Arial')
+    g = GraphViz.new('Deps')
     dependency_graph.each do |k, vs|
       n1 = g.add_nodes(k)
       n2 = g.add_nodes(vs)
@@ -96,7 +96,13 @@ class Deps
     def self.draw(graph)
       return if graph.empty?
 
-      GraphViz.new('G').output(png: 'deps.png')
+      g = GraphViz.new('Deps')
+      graph.each do |k, vs|
+        n1 = g.add_nodes(k)
+        n2 = g.add_nodes(vs)
+        g.add_edges(n1, n2)
+      end
+      g.output(svg: 'deps.svg')
     end
   end
 end
