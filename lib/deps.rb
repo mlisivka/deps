@@ -2,11 +2,18 @@ require 'ruby-graphviz'
 
 # TODO: Filter by class with stack size
 # TODO: meta programming
+# TODO: excluding classes - array of regexep or string
+# TODO: if object passed as argument - no dependency
+# TODO: chose which graph create: class or method - switch on the fly
+# TODO: c_retrun, c_call
+# TODO: singleton class divider - .
 class Deps
   attr_reader :stack_level
 
-  def self.run(**opts)
-    self.test_run(opts) { yield }.tap { |deps| Visualizer.draw(deps.class_graph, format: :png) }
+  def self.run(klass: true, **opts, &block)
+    test_run(opts, &block).tap do |deps|
+      Visualizer.draw(klass ? deps.class_graph : deps.dependency_graph, format: :svg)
+    end
   end
 
   def self.test_run(filter: nil)
@@ -14,13 +21,16 @@ class Deps
     allowed_path = Dir.glob(File.expand_path(filter)) if filter
     @trace1 = TracePoint.new(:call) do |tp|
       next deps.ascend_stack_level if allowed_path && !allowed_path.include?(tp.path)
-      class_name = tp.defined_class.to_s
+
+      class_name = tp.defined_class.to_s.delete_prefix('#<Class:').delete_suffix('>').split('(').first
       method = tp.method_id.to_s
       deps.ascend_stack_level
       deps.add_callee(class_name, method)
     end
     @trace2 = TracePoint.new(:return) do |tp|
       next deps.descend_stack_level if allowed_path && !allowed_path.include?(tp.path)
+
+      puts tp.path
       deps.match_dependency
       deps.descend_stack_level
     end
@@ -59,13 +69,27 @@ class Deps
   end
 
   def dependency_graph
-    @deps.map do |a, b|
+    @deps.reject { |a| a.compact.size < 2 || a.first == a.second }.map do |a, b|
       [a[0..1].join('#'), b[0..1].join('#')]
-    end.uniq
+    end.uniq.reject do |method1, method2|
+      klass1 = method1.split('#').first
+      klass2 = method2.split('#').first
+      klass1 == 'ApplicationRecord' || klass2 == 'ApplicationRecord' ||
+        klass1 == 'DatabaseUtils' || klass2 == 'DatabaseUtils' ||
+        klass1 == 'XssPrevention' || klass2 == 'XssPrevention' ||
+        klass1 == 'JoinedAttributes' || klass2 == 'JoinedAttributes'
+    end
   end
 
   def class_graph
-    @deps.map { |a, b| [a.first, b.first] }.uniq.reject { |klass1, klass2| klass1 == klass2 }
+    @deps.reject { |a| a.compact.uniq.size < 2 }.map do |a, b|
+      [a.first, b.first]
+    end.uniq.reject do |klass1, klass2|
+      klass1 == 'ApplicationRecord' || klass2 == 'ApplicationRecord' ||
+        klass1 == 'DatabaseUtils' || klass2 == 'DatabaseUtils' ||
+        klass1 == 'XssPrevention' || klass2 == 'XssPrevention' ||
+        klass1 == 'JoinedAttributes' || klass2 == 'JoinedAttributes'
+    end
   end
 
   private
